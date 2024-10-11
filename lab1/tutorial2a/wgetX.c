@@ -178,7 +178,10 @@ int download_page(url_info *info, http_reply *reply) {
     dest.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     dest.sin_port = htons(info->port);
 
-    connect(mysocket, (sockaddr*)&dest, sizeof(sockaddr));
+    if(connect(mysocket, (sockaddr*)&dest, sizeof(sockaddr)) < 0){
+        fprintf(stderr, "connection failed\n");
+        return 1;
+    }
     char *complete_reply, *ith_reply;
     complete_reply = calloc(1025, sizeof(char));
     ith_reply = calloc(1025, sizeof(char));
@@ -284,11 +287,21 @@ char *read_http_reply(struct http_reply *reply) {
 
     int keep_calling = 1;
     do{
-        char *myline = next_line(buf, strlen(buf));
-        if(!myline){
+        if (buf >= reply->reply_buffer + reply->reply_buffer_length) {
+            return NULL;
+        }
+
+        char *line_end = next_line(buf, reply->reply_buffer + reply->reply_buffer_length - buf);
+        if(line_end == NULL){
+            return NULL;
+        }
+
+        if(line_end == buf){
+            buf += 2;
             keep_calling = 0;
         }else{
-
+            *line_end = '\0';
+            buf = line_end + 2;
         }
     }while(keep_calling);
 
