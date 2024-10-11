@@ -98,3 +98,7 @@ void print_url_info(url_info *info){
 	printf("Port No.:\t%d\n", info->port);
 	printf("Path:\t\t/%s\n", info->path);
 }
+
+char* get_url_errstr(int err_code){
+	return (char*) parse_url_errstr[err_code];
+}

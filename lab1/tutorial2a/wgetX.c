@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     }
 
     //If needed for debug
-    print_url_info(&info);
+    //print_url_info(&info);
 
     // Download the page
     struct http_reply reply;
@@ -100,7 +100,7 @@ int download_page(url_info *info, http_reply *reply) {
     }
     //source: https://www.geeksforgeeks.org/c-program-display-hostname-ip-address/
     char *ip_address = inet_ntoa(*((struct in_addr*)host_ip->h_addr_list[0]));
-    printf("%s\n", ip_address);
+    //printf("debug ip %s\n", ip_address);
 
     /*
      * To be completed:
@@ -131,7 +131,7 @@ int download_page(url_info *info, http_reply *reply) {
     //source: https://cboard.cprogramming.com/c-programming/142841-sending-http-get-request-c.html
     serv_addr.sin_family = AF_INET;
     bcopy(ip_address, (char *)&serv_addr.sin_addr.s_addr, strlen(ip_address));
-    //serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(info->port);
 
     int conn_status = connect(listenfd, (sockaddr*)&serv_addr, sizeof(serv_addr));

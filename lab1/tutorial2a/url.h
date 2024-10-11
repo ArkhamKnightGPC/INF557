@@ -41,4 +41,6 @@ static const char *parse_url_errstr[] = { "no error" , "no trailing slash", "inv
 
 void print_url_info(url_info *info);
 
+char* get_url_errstr(int err_code);
+
 #endif //URL_H
