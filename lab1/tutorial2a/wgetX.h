@@ -16,7 +16,6 @@
 
 /* Structure used to store the buffer and buffer length when receiving the reply from an http server. */
 typedef struct http_reply {
-
     /* The address of the buffer containing everything received from the server.
      * The memory is allocated using malloc, and its size can be increased with realloc. */
     char *reply_buffer;
@@ -26,6 +25,8 @@ typedef struct http_reply {
 } http_reply;
 
 typedef struct hostent hostent;
+typedef struct sockaddr_in sockaddr_in;
+typedef struct sockaddr sockaddr;
 
 /**
  * \brief write the data to a file

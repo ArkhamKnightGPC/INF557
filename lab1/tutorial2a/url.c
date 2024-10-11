@@ -45,6 +45,7 @@ int parse_url(char* url, url_info *info)
 		}
 	}else{//protocol not specified
 		info->protocol = "http";
+		protocol_separator = mutable_url-3;
 	}
 
 	char *hostname_separator = strstr(protocol_separator+3, "/");
