@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <stdio.h>
@@ -93,6 +94,13 @@ int download_page(url_info *info, http_reply *reply) {
      *
      */
     hostent *host_ip = gethostbyname(info->host);
+    if(!host_ip){
+        fprintf(stderr, "error getting host ip address\n");
+        return 1;
+    }
+    //source: https://www.geeksforgeeks.org/c-program-display-hostname-ip-address/
+    char *ip_address = inet_ntoa(*((struct in_addr*)host_ip->h_addr_list[0]));
+    printf("%s\n", ip_address);
 
     /*
      * To be completed:
@@ -112,22 +120,32 @@ int download_page(url_info *info, http_reply *reply) {
     char sendBuff[1025];
     char *request_buffer = http_get_request(info);
     int listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    if(listenfd < 0){
+        fprintf(stderr, "error opening socket\n");
+        return 1;
+    }
 
     sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     memset(sendBuff, 0, sizeof(sendBuff));
+    //source: https://cboard.cprogramming.com/c-programming/142841-sending-http-get-request-c.html
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    bcopy(ip_address, (char *)&serv_addr.sin_addr.s_addr, strlen(ip_address));
+    //serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(info->port);
 
-    int conn_status = connect(listenfd, (const sockaddr_in*)&serv_addr, sizeof(serv_addr));
+    int conn_status = connect(listenfd, (sockaddr*)&serv_addr, sizeof(serv_addr));
     if(conn_status == -1){
         fprintf(stderr, "connection failed\n");
-        return;
+        return 1;
     }
-    ssize_t bytes_sent = write(listenfd, request_buffer, strlen(request_buffer));
-    int conn_close = shutdown(listenfd, SHUT_WR);
-    free(request_buffer);
+    if(write(listenfd, request_buffer, strlen(request_buffer)) < 0){
+        fprintf(stderr, "write failed\n");
+        return 1;
+    }
+    close(listenfd);
+    //shutdown(listenfd, SHUT_WR);
+    //free(request_buffer);
 
     /*
      * To be completed:
@@ -160,7 +178,7 @@ int download_page(url_info *info, http_reply *reply) {
     dest.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     dest.sin_port = htons(info->port);
 
-    connect(mysocket, (const sockaddr_in*)&dest, sizeof(sockaddr));
+    connect(mysocket, (sockaddr*)&dest, sizeof(sockaddr));
     char *complete_reply, *ith_reply;
     complete_reply = calloc(1025, sizeof(char));
     ith_reply = calloc(1025, sizeof(char));
@@ -194,7 +212,7 @@ void write_data(const char *path, const char * data, int len) {
         fprintf(stderr, "Could not find file\n");
         return;
     }
-    fprintf(fp, data);
+    fprintf(fp, "%s", data);
     fclose(fp);
 }
 
