@@ -233,10 +233,10 @@ char *next_line(char *buff, int len) {
 
     char *last = buff + len - 1;
     while (buff != last) {
-	if (*buff == '\r' && *(buff+1) == '\n') {
-	    return buff;
-	}
-	buff++;
+        if (*buff == '\r' && *(buff+1) == '\n') {
+            return buff;
+        }
+        buff++;
     }
     return NULL;
 }
@@ -292,11 +292,8 @@ char *read_http_reply(struct http_reply *reply) {
         }
 
         char *line_end = next_line(buf, reply->reply_buffer + reply->reply_buffer_length - buf);
-        if(line_end == NULL){
-            return NULL;
-        }
 
-        if(line_end == buf){
+        if(*buf == '\r' && *(buf+1) == '\n'){
             buf += 2;
             keep_calling = 0;
         }else{
