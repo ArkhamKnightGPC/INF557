@@ -144,7 +144,10 @@ int download_page(url_info *info, http_reply *reply) {
     //printf("AFTER CONNECT %d\n", connfd);
 
     char *sendBuff = http_get_request(info);
-    write(client_socket, sendBuff, strlen(sendBuff));
+    if( write(client_socket, sendBuff, strlen(sendBuff)) < 0){
+        fprintf(stderr, "Could not send request\n");
+        return 1;
+    }
     free(sendBuff);
 
     /*
@@ -177,21 +180,24 @@ int download_page(url_info *info, http_reply *reply) {
     do{
         int bytes_received = recv(client_socket, tmp_buffer, sizeof(tmp_buffer), 0);
         //printf("recv %d\n", bytes_received);
+        //printf("%s\n", tmp_buffer);
         if(bytes_received <= 0){
             still_receiving = 0;
         }else{
             len += bytes_received;
-            while(len > reply_buffer_length){
-                reply_buffer_length *= 2;
+            if(len > reply_buffer_length){
+                reply_buffer_length = len+1;
                 reply_buffer = realloc(reply_buffer, reply_buffer_length);
             }
             strcat(reply_buffer, tmp_buffer);
         }
     }while(still_receiving);
 
-    reply->reply_buffer = (char *)calloc(reply_buffer_length, sizeof(char));
-    strcpy(reply->reply_buffer, reply_buffer);
-    reply->reply_buffer_length = reply_buffer_length;
+    //printf("%s\n", reply_buffer);
+
+    reply->reply_buffer = (char *)calloc(reply_buffer_length-1, sizeof(char));
+    memcpy(reply->reply_buffer, reply_buffer, reply_buffer_length-1);
+    reply->reply_buffer_length = reply_buffer_length-1;
 
     return 0;
 }
@@ -206,7 +212,10 @@ void write_data(const char *path, const char * data, int len) {
         fprintf(stderr, "Could not find file\n");
         return;
     }
-    fwrite(data, 1, len, fp);
+    if( fwrite(data, 1, len, fp) < 0){
+        fprintf(stderr, "Could not write to file\n");
+        return;
+    }
     fclose(fp);
 }
 
