@@ -24,9 +24,21 @@ typedef struct http_reply {
     int reply_buffer_length;
 } http_reply;
 
+/*struct addrinfo {
+    int              ai_flags;
+    int              ai_family;
+    int              ai_socktype;
+    int              ai_protocol;
+    size_t           ai_addrlen;
+    struct sockaddr *ai_addr;
+    char            *ai_canonname;
+    struct addrinfo *ai_next;
+};*/
+
 typedef struct hostent hostent;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr sockaddr;
+typedef struct addrinfo addrinfo;
 
 /**
  * \brief write the data to a file

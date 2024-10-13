@@ -16,39 +16,37 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <arpa/inet.h>
 
 #include "url.h"
 #include "wgetX.h"
 
 int main(int argc, char* argv[]) {
-
     url_info info;
-    const char *file_name = "received_page";
-
+    const char * file_name = "received_page";
     if (argc < 2) {
-        fprintf(stderr, "Missing argument. Please enter URL.\n");
-        return 1;
+	fprintf(stderr, "Missing argument. Please enter URL.\n");
+	return 1;
     }
 
     char *url = argv[1];
 
     // Get optional file name
     if (argc > 2) {
-	    file_name = argv[2];
+	file_name = argv[2];
     }
 
     // First parse the URL
     int ret = parse_url(url, &info);
     if (ret) {
-	    fprintf(stderr, "Could not parse URL '%s': %s\n", url, parse_url_errstr[ret]);
-	    return 2;
+	fprintf(stderr, "Could not parse URL '%s': %s\n", url, parse_url_errstr[ret]);
+	return 2;
     }
 
     //If needed for debug
@@ -59,14 +57,14 @@ int main(int argc, char* argv[]) {
 
     ret = download_page(&info, &reply);
     if (ret) {
-	    return 3;
+	return 3;
     }
 
     // Now parse the responses
     char *response = read_http_reply(&reply);
     if (response == NULL) {
-        fprintf(stderr, "Could not parse http reply\n");
-        return 4;
+	fprintf(stderr, "Could not parse http reply\n");
+	return 4;
     }
 
     // Write response to a file
@@ -93,14 +91,24 @@ int download_page(url_info *info, http_reply *reply) {
      *     Use getaddrinfo and implement a function that works for both IPv4 and IPv6.
      *
      */
-    hostent *host_ip = gethostbyname(info->host);
-    if(!host_ip){
-        fprintf(stderr, "error getting host ip address\n");
+    //https://csperkins.org/teaching/2009-2010/networked-systems/lab04.pdf
+    
+    addrinfo *host = (addrinfo *)calloc(1, sizeof(addrinfo));
+    sockaddr_in *host_addr = (sockaddr_in *)calloc(1, sizeof(sockaddr_in));
+
+    if(getaddrinfo(info->host, NULL, NULL, &host) != 0){
+        fprintf(stderr, "Could not find host address\n");
         return 1;
     }
-    //source: https://www.geeksforgeeks.org/c-program-display-hostname-ip-address/
-    char *ip_address = inet_ntoa(*((struct in_addr*)host_ip->h_addr_list[0]));
-    //printf("debug ip %s\n", ip_address);
+    host_addr = (sockaddr_in *)host->ai_addr;
+    host_addr->sin_port = htons(80);
+
+    //char *host_ip = (char *)inet_ntoa(host_addr->sin_addr);
+    //printf("FAMILY %d  SOCKTYPE %d PROTOCOL %d\n", 
+    //    host->ai_family, host->ai_socktype, host->ai_protocol);
+    //printf("debug %s\n", host_ip);
+    //printf("FAMILY %d PORT %d\n", host_addr->sin_family, host_addr->sin_port);
+    //printf("FAMILY %d PORT %d PROTOCOL 0\n", AF_INET, info->port);
 
     /*
      * To be completed:
@@ -117,35 +125,27 @@ int download_page(url_info *info, http_reply *reply) {
      *   Note4: Free the request buffer returned by http_get_request by calling the 'free' function.
      *
      */
-    char sendBuff[1025];
-    char *request_buffer = http_get_request(info);
-    int listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(listenfd < 0){
-        fprintf(stderr, "error opening socket\n");
-        return 1;
-    }
+    //https://cboard.cprogramming.com/c-programming/142841-sending-http-get-request-c.html
 
-    sockaddr_in serv_addr;
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    memset(sendBuff, 0, sizeof(sendBuff));
-    //source: https://cboard.cprogramming.com/c-programming/142841-sending-http-get-request-c.html
-    serv_addr.sin_family = AF_INET;
-    bcopy(ip_address, (char *)&serv_addr.sin_addr.s_addr, strlen(ip_address));
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serv_addr.sin_port = htons(info->port);
+    //int client_socket = socket(host->ai_family, host->ai_socktype, host->ai_protocol);
+    int client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if(client_socket < 0){
+        fprintf(stderr, "Could not open socket\n");
+        return 1;
+    }
+    socklen_t slen = sizeof(sockaddr);
 
-    int conn_status = connect(listenfd, (sockaddr*)&serv_addr, sizeof(serv_addr));
-    if(conn_status == -1){
-        fprintf(stderr, "connection failed\n");
+    //printf("BEFORE CONNECT %d\n", client_socket);
+    int connfd = connect(client_socket, (sockaddr *)host_addr, slen);
+    if(connfd < 0){
+        fprintf(stderr, "Could not connect\n");
         return 1;
     }
-    if(write(listenfd, request_buffer, strlen(request_buffer)) < 0){
-        fprintf(stderr, "write failed\n");
-        return 1;
-    }
-    close(listenfd);
-    //shutdown(listenfd, SHUT_WR);
-    //free(request_buffer);
+    //printf("AFTER CONNECT %d\n", connfd);
+
+    char *sendBuff = http_get_request(info);
+    write(client_socket, sendBuff, strlen(sendBuff));
+    free(sendBuff);
 
     /*
      * To be completed:
@@ -168,39 +168,30 @@ int download_page(url_info *info, http_reply *reply) {
      *
      *
      */
-    int len, mysocket;
-    sockaddr_in dest;
+    char *reply_buffer = (char *)calloc(1, sizeof(char));
+    int reply_buffer_length = 1;
 
-    mysocket = socket(AF_INET, SOCK_STREAM, 0);
-    memset(&dest, 0, sizeof(dest));
-
-    dest.sin_family = AF_INET;
-    dest.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    dest.sin_port = htons(info->port);
-
-    if(connect(mysocket, (sockaddr*)&dest, sizeof(sockaddr)) < 0){
-        fprintf(stderr, "connection failed\n");
-        return 1;
-    }
-    char *complete_reply, *ith_reply;
-    complete_reply = calloc(1025, sizeof(char));
-    ith_reply = calloc(1025, sizeof(char));
-    int still_receiving = 1;
+    char *tmp_buffer = calloc(1025, sizeof(char));
+    int len = 0, still_receiving = 1;
+    //printf("START RECEIVING\n");
     do{
-        int bytes_received = recv(mysocket, ith_reply, sizeof(ith_reply), 0);
-        if(bytes_received < 0){
+        int bytes_received = recv(client_socket, tmp_buffer, sizeof(tmp_buffer), 0);
+        //printf("recv %d\n", bytes_received);
+        if(bytes_received <= 0){
             still_receiving = 0;
         }else{
             len += bytes_received;
-            if(len > strlen(complete_reply)){
-                int new_size = 2*strlen(complete_reply);
-                complete_reply = realloc(complete_reply, new_size);
+            while(len > reply_buffer_length){
+                reply_buffer_length *= 2;
+                reply_buffer = realloc(reply_buffer, reply_buffer_length);
             }
+            strcat(reply_buffer, tmp_buffer);
         }
     }while(still_receiving);
-    
-    reply->reply_buffer_length = len;
-    strcpy(reply->reply_buffer, complete_reply);
+
+    reply->reply_buffer = (char *)calloc(reply_buffer_length, sizeof(char));
+    strcpy(reply->reply_buffer, reply_buffer);
+    reply->reply_buffer_length = reply_buffer_length;
 
     return 0;
 }
@@ -215,7 +206,7 @@ void write_data(const char *path, const char * data, int len) {
         fprintf(stderr, "Could not find file\n");
         return;
     }
-    fprintf(fp, "%s", data);
+    fwrite(data, 1, len, fp);
     fclose(fp);
 }
 
@@ -228,15 +219,15 @@ char* http_get_request(url_info *info) {
 
 char *next_line(char *buff, int len) {
     if (len == 0) {
-	    return NULL;
+	return NULL;
     }
 
     char *last = buff + len - 1;
     while (buff != last) {
-        if (*buff == '\r' && *(buff+1) == '\n') {
-            return buff;
-        }
-        buff++;
+	if (*buff == '\r' && *(buff+1) == '\n') {
+	    return buff;
+	}
+	buff++;
     }
     return NULL;
 }
@@ -246,8 +237,8 @@ char *read_http_reply(struct http_reply *reply) {
     // Let's first isolate the first line of the reply
     char *status_line = next_line(reply->reply_buffer, reply->reply_buffer_length);
     if (status_line == NULL) {
-	    fprintf(stderr, "Could not find status\n");
-	    return NULL;
+	fprintf(stderr, "Could not find status\n");
+	return NULL;
     }
     *status_line = '\0'; // Make the first line is a null-terminated string
 
@@ -256,13 +247,13 @@ char *read_http_reply(struct http_reply *reply) {
     double http_version;
     int rv = sscanf(reply->reply_buffer, "HTTP/%lf %d", &http_version, &status);
     if (rv != 2) {
-        fprintf(stderr, "Could not parse http response first line (rv=%d, %s)\n", rv, reply->reply_buffer);
-        return NULL;
+	fprintf(stderr, "Could not parse http response first line (rv=%d, %s)\n", rv, reply->reply_buffer);
+	return NULL;
     }
 
     if (status != 200) {
-        fprintf(stderr, "Server returned status %d (should be 200)\n", status);
-        return NULL;
+	fprintf(stderr, "Server returned status %d (should be 200)\n", status);
+	return NULL;
     }
 
     char *buf = status_line + 2;
@@ -280,11 +271,10 @@ char *read_http_reply(struct http_reply *reply) {
      *   Keep calling next_line until you read an empty line, and return only what remains (without the empty line).
      *   Hint: Take a look at how end of lines are tested in next_line function declaration, to get inspiration
      *
-     *   Difficult challenge:
+     *   Difficul challenge:
      *     If you feel like having a real challenge, go on and implement HTTP redirect support for your client.
      *
      */
-
     int keep_calling = 1;
     do{
         if (buf >= reply->reply_buffer + reply->reply_buffer_length) {
