@@ -31,22 +31,22 @@ int main(int argc, char* argv[]) {
     url_info info;
     const char * file_name = "received_page";
     if (argc < 2) {
-	fprintf(stderr, "Missing argument. Please enter URL.\n");
-	return 1;
+        fprintf(stderr, "Missing argument. Please enter URL.\n");
+        return 1;
     }
 
     char *url = argv[1];
 
     // Get optional file name
     if (argc > 2) {
-	file_name = argv[2];
+	    file_name = argv[2];
     }
 
     // First parse the URL
     int ret = parse_url(url, &info);
     if (ret) {
-	fprintf(stderr, "Could not parse URL '%s': %s\n", url, parse_url_errstr[ret]);
-	return 2;
+        fprintf(stderr, "Could not parse URL '%s': %s\n", url, parse_url_errstr[ret]);
+        return 2;
     }
 
     //If needed for debug
@@ -57,14 +57,14 @@ int main(int argc, char* argv[]) {
 
     ret = download_page(&info, &reply);
     if (ret) {
-	return 3;
+        return 3;
     }
 
     // Now parse the responses
     char *response = read_http_reply(&reply);
     if (response == NULL) {
-	fprintf(stderr, "Could not parse http reply\n");
-	return 4;
+        fprintf(stderr, "Could not parse http reply\n");
+        return 4;
     }
 
     // Write response to a file
@@ -148,7 +148,6 @@ int download_page(url_info *info, http_reply *reply) {
         fprintf(stderr, "Could not send request\n");
         return 1;
     }
-    free(sendBuff);
 
     /*
      * To be completed:
@@ -171,33 +170,28 @@ int download_page(url_info *info, http_reply *reply) {
      *
      *
      */
-    char *reply_buffer = (char *)calloc(1, sizeof(char));
-    int reply_buffer_length = 1;
+    reply->reply_buffer = (char *)calloc(1024, sizeof(char));
+    reply->reply_buffer_length = 1024;
 
-    char *tmp_buffer = calloc(1025, sizeof(char));
-    int len = 0, still_receiving = 1;
-    //printf("START RECEIVING\n");
+    int keep_receiving = 1, len = 0;
     do{
-        int bytes_received = recv(client_socket, tmp_buffer, sizeof(tmp_buffer), 0);
-        //printf("recv %d\n", bytes_received);
-        //printf("%s\n", tmp_buffer);
+        int bytes_received = recv(client_socket, reply->reply_buffer, reply->reply_buffer_length - len, 0);
+        len += bytes_received;
         if(bytes_received <= 0){
-            still_receiving = 0;
-        }else{
-            len += bytes_received;
-            if(len > reply_buffer_length){
-                reply_buffer_length = len+1;
-                reply_buffer = realloc(reply_buffer, reply_buffer_length);
-            }
-            strcat(reply_buffer, tmp_buffer);
+            keep_receiving = 0;
         }
-    }while(still_receiving);
+        if(len >= reply->reply_buffer_length){
+            reply->reply_buffer_length *= 2;
+            reply->reply_buffer = realloc(reply->reply_buffer, reply->reply_buffer_length);
+        }
+    }while(keep_receiving);
 
-    //printf("%s\n", reply_buffer);
+    //printf("%s\n", reply->reply_buffer);
+    reply->reply_buffer_length = strlen(reply->reply_buffer);
 
-    reply->reply_buffer = (char *)calloc(reply_buffer_length-1, sizeof(char));
-    memcpy(reply->reply_buffer, reply_buffer, reply_buffer_length-1);
-    reply->reply_buffer_length = reply_buffer_length-1;
+    close(client_socket);
+    free(host);
+    free(sendBuff);
 
     return 0;
 }
@@ -246,8 +240,8 @@ char *read_http_reply(struct http_reply *reply) {
     // Let's first isolate the first line of the reply
     char *status_line = next_line(reply->reply_buffer, reply->reply_buffer_length);
     if (status_line == NULL) {
-	fprintf(stderr, "Could not find status\n");
-	return NULL;
+        fprintf(stderr, "Could not find status\n");
+        return NULL;
     }
     *status_line = '\0'; // Make the first line is a null-terminated string
 
@@ -256,13 +250,18 @@ char *read_http_reply(struct http_reply *reply) {
     double http_version;
     int rv = sscanf(reply->reply_buffer, "HTTP/%lf %d", &http_version, &status);
     if (rv != 2) {
-	fprintf(stderr, "Could not parse http response first line (rv=%d, %s)\n", rv, reply->reply_buffer);
-	return NULL;
+        fprintf(stderr, "Could not parse http response first line (rv=%d, %s)\n", rv, reply->reply_buffer);
+        return NULL;
+    }
+
+    if(status == 301 || status == 302){
+        fprintf(stderr, "Redirect\n");
+        return NULL;
     }
 
     if (status != 200) {
-	fprintf(stderr, "Server returned status %d (should be 200)\n", status);
-	return NULL;
+        fprintf(stderr, "Server returned status %d (should be 200)\n", status);
+        return NULL;
     }
 
     char *buf = status_line + 2;
@@ -284,22 +283,20 @@ char *read_http_reply(struct http_reply *reply) {
      *     If you feel like having a real challenge, go on and implement HTTP redirect support for your client.
      *
      */
-    int keep_calling = 1;
-    do{
-        if (buf >= reply->reply_buffer + reply->reply_buffer_length) {
-            return NULL;
-        }
+    int reply_length = reply->reply_buffer_length - sizeof(reply->reply_buffer) - 2;
 
-        char *line_end = next_line(buf, reply->reply_buffer + reply->reply_buffer_length - buf);
+    while(*buf != '\r'){
 
-        if(*buf == '\r' && *(buf+1) == '\n'){
-            buf += 2;
-            keep_calling = 0;
-        }else{
-            *line_end = '\0';
-            buf = line_end + 2;
-        }
-    }while(keep_calling);
+        status_line = next_line(buf, reply_length);
+        *status_line = '\n';
+
+        reply_length -= sizeof(buf) + 2;
+        buf = status_line + 2;
+    }   
+
+    buf += 2;
+
+    //printf("%s\n", buf);
 
     return buf;
 }
