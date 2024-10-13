@@ -2,6 +2,8 @@
 
 Assignments from the course Fundamentals of Modern Computer Networking at Ecole polytechnique.
 
-- **Lab1**: Network Application Programming
+- **Tutorial 1a**: Introduction to C
 
-The goal of this lab is to work through the basics of network programming in C by building a "web client": an application that can connect to a website, download a webpage, and save it to a file on our local computer.  This lab shows how to write networked programs using the transport protocols TCP and UDP.
+- **Tutorial 1b**: Pointers and references
+
+- **Tutorial 2a**: Send/receive HTTP GET request
