@@ -7,3 +7,5 @@ Assignments from the course Fundamentals of Modern Computer Networking at Ecole 
 - **Tutorial 1b**: Pointers and references
 
 - **Tutorial 2a**: Send/receive HTTP GET request
+
+- **Tutorial 3a**: Multi-threading in C
