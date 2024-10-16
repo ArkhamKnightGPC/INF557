@@ -180,22 +180,22 @@ int download_page(url_info *info, http_reply *reply) {
     do{
         //int bytes_received = recv(client_socket, reply->reply_buffer + len, reply->reply_buffer_length - len, 0);
         int bytes_received = recv(client_socket, tmp_buffer, my_buffer_size, 0);
-        len += bytes_received;
-        //printf("BYTES RECEIVED %d %d\n", bytes_received, len);
         if(bytes_received <= 0){
             keep_receiving = 0;
         }
-        if(len >= reply->reply_buffer_length){
+        if(len + bytes_received >= reply->reply_buffer_length){
             //printf("DOUBLING BUFFER SIZE: %d\n", len);
-            reply->reply_buffer_length *= 2;
+            reply->reply_buffer_length = len + bytes_received + 1;
             reply->reply_buffer = realloc(reply->reply_buffer, reply->reply_buffer_length);
         }
-        strcat(reply->reply_buffer, tmp_buffer);
+        memcpy(reply->reply_buffer + len, tmp_buffer, bytes_received);
+        len += bytes_received;
+        //printf("BYTES RECEIVED %d %d  MY SIZE %d  TMP BUFF %d\n", bytes_received, len, reply->reply_buffer_length, strlen(tmp_buffer));
     }while(keep_receiving);
 
     //printf("%s\n", reply->reply_buffer);
     reply->reply_buffer_length = strlen(reply->reply_buffer);
-    //printf("REPLY BYTESIZE: %d\n", reply->reply_buffer_length);
+    //printf("REPLY BYTESIZE: %d  EXPECTED LENGTH: %d\n", reply->reply_buffer_length, len);
 
     close(client_socket);
     free(host);
@@ -303,7 +303,7 @@ char *read_http_reply(struct http_reply *reply) {
         buf = status_line + 2;
     }   
 
-    buf += 2;
+    //buf += 2;
 
     //printf("%s\n", buf);
 
