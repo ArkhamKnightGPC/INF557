@@ -170,24 +170,32 @@ int download_page(url_info *info, http_reply *reply) {
      *
      *
      */
-    reply->reply_buffer = (char *)calloc(1024, sizeof(char));
-    reply->reply_buffer_length = 1024;
+    const int my_buffer_size = 1024;
+    reply->reply_buffer = (char *)calloc(my_buffer_size, sizeof(char));
+    reply->reply_buffer_length = my_buffer_size;
+
+    char *tmp_buffer = (char *)calloc(my_buffer_size, sizeof(char));
 
     int keep_receiving = 1, len = 0;
     do{
-        int bytes_received = recv(client_socket, reply->reply_buffer, reply->reply_buffer_length - len, 0);
+        //int bytes_received = recv(client_socket, reply->reply_buffer + len, reply->reply_buffer_length - len, 0);
+        int bytes_received = recv(client_socket, tmp_buffer, my_buffer_size, 0);
         len += bytes_received;
+        //printf("BYTES RECEIVED %d %d\n", bytes_received, len);
         if(bytes_received <= 0){
             keep_receiving = 0;
         }
         if(len >= reply->reply_buffer_length){
+            //printf("DOUBLING BUFFER SIZE: %d\n", len);
             reply->reply_buffer_length *= 2;
             reply->reply_buffer = realloc(reply->reply_buffer, reply->reply_buffer_length);
         }
+        strcat(reply->reply_buffer, tmp_buffer);
     }while(keep_receiving);
 
     //printf("%s\n", reply->reply_buffer);
     reply->reply_buffer_length = strlen(reply->reply_buffer);
+    //printf("REPLY BYTESIZE: %d\n", reply->reply_buffer_length);
 
     close(client_socket);
     free(host);
@@ -239,6 +247,7 @@ char *read_http_reply(struct http_reply *reply) {
 
     // Let's first isolate the first line of the reply
     char *status_line = next_line(reply->reply_buffer, reply->reply_buffer_length);
+
     if (status_line == NULL) {
         fprintf(stderr, "Could not find status\n");
         return NULL;
