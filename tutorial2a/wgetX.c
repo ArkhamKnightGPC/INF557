@@ -178,24 +178,24 @@ int download_page(url_info *info, http_reply *reply) {
 
     int keep_receiving = 1, len = 0;
     do{
-        //int bytes_received = recv(client_socket, reply->reply_buffer + len, reply->reply_buffer_length - len, 0);
+        //int bytes_received = recv(client_socket, reply->reply_buffer, reply->reply_buffer_length - len, 0);
         int bytes_received = recv(client_socket, tmp_buffer, my_buffer_size, 0);
-        if(bytes_received <= 0){
-            keep_receiving = 0;
-        }
-        if(len + bytes_received >= reply->reply_buffer_length){
-            //printf("DOUBLING BUFFER SIZE: %d\n", len);
-            reply->reply_buffer_length = len + bytes_received + 1;
+        len += bytes_received;
+        if(len >= reply->reply_buffer_length){
+            reply->reply_buffer_length = len + 1;
             reply->reply_buffer = realloc(reply->reply_buffer, reply->reply_buffer_length);
         }
-        memcpy(reply->reply_buffer + len, tmp_buffer, bytes_received);
-        len += bytes_received;
-        //printf("BYTES RECEIVED %d %d  MY SIZE %d  TMP BUFF %d\n", bytes_received, len, reply->reply_buffer_length, strlen(tmp_buffer));
+        if(bytes_received <= 0){
+            keep_receiving = 0;
+        }else{
+            memcpy(reply->reply_buffer + len - bytes_received, tmp_buffer, bytes_received);   
+        }
     }while(keep_receiving);
 
     //printf("%s\n", reply->reply_buffer);
-    reply->reply_buffer_length = strlen(reply->reply_buffer);
-    //printf("REPLY BYTESIZE: %d  EXPECTED LENGTH: %d\n", reply->reply_buffer_length, len);
+    //reply->reply_buffer_length = strlen(reply->reply_buffer);
+    reply->reply_buffer_length = len;
+    //printf("%d\n", reply->reply_buffer_length);
 
     close(client_socket);
     free(host);
@@ -247,7 +247,6 @@ char *read_http_reply(struct http_reply *reply) {
 
     // Let's first isolate the first line of the reply
     char *status_line = next_line(reply->reply_buffer, reply->reply_buffer_length);
-
     if (status_line == NULL) {
         fprintf(stderr, "Could not find status\n");
         return NULL;
@@ -303,7 +302,7 @@ char *read_http_reply(struct http_reply *reply) {
         buf = status_line + 2;
     }   
 
-    //buf += 2;
+    buf += 2;
 
     //printf("%s\n", buf);
 
