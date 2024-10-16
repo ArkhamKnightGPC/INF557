@@ -67,6 +67,10 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Could not parse http reply\n");
         return 4;
     }
+    
+    //printf("----------\n");
+    //printf("%s\n", response);
+    //printf("----------\n");
 
     // Write response to a file
     write_data(file_name, response, reply.reply_buffer + reply.reply_buffer_length - response);
@@ -314,7 +318,7 @@ char *read_http_reply(struct http_reply *reply) {
         //fprintf(stderr, "Redirect\n");
         //printf("%s\n", reply_copy->reply_buffer);
 
-        struct http_reply *new_reply = malloc(sizeof(struct http_reply));
+        //struct http_reply *new_reply = malloc(sizeof(struct http_reply));
         char *new_url = (char *)calloc(1, sizeof(char));
         find_new_url(reply_copy->reply_buffer, new_url);
         url_info *new_urlinfo = (url_info *)calloc(1, sizeof(url_info));
@@ -326,12 +330,14 @@ char *read_http_reply(struct http_reply *reply) {
 
         //print_url_info(new_urlinfo);
 
-        if(download_page(new_urlinfo, new_reply)){
+        if(download_page(new_urlinfo, reply)){
             fprintf(stderr, "Problem downloading redirect page\n");
             return NULL;
         }
 
-        return read_http_reply(new_reply);
+        //printf("%s\n", reply->reply_buffer);
+
+        return read_http_reply(reply);
     }
 
     if (status != 200) {
