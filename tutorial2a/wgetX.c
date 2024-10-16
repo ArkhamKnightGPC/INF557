@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <regex.h>
 
 #include "url.h"
 #include "wgetX.h"
@@ -193,7 +194,6 @@ int download_page(url_info *info, http_reply *reply) {
     }while(keep_receiving);
 
     //printf("%s\n", reply->reply_buffer);
-    //reply->reply_buffer_length = strlen(reply->reply_buffer);
     reply->reply_buffer_length = len;
     //printf("%d\n", reply->reply_buffer_length);
 
@@ -243,7 +243,52 @@ char *next_line(char *buff, int len) {
     return NULL;
 }
 
+void find_new_url(char *redirect_reply, char *new_url) {//ok I need to find string in redirect href=""
+    regex_t regex;
+    regmatch_t match[2];
+
+    const char *regex_pattern = "href=\"([^\"]*)\"";
+    int reti = regcomp(&regex, regex_pattern, REG_EXTENDED);
+
+    if (reti) {
+        fprintf(stderr, "For some reason regcomp failed :(\n");
+        return;
+    }
+
+    reti = regexec(&regex, redirect_reply, 2, match, REG_EXTENDED);
+
+    if (!reti) {
+        int start = match[1].rm_so;
+        int end = match[1].rm_eo;
+        int length = end - start;
+
+        if (new_url == NULL) {
+            fprintf(stderr, "Memory allocation failed\n");
+            regfree(&regex);
+            return;
+        }
+
+        strncpy(new_url, redirect_reply + start, length);
+        new_url[length] = '\0';
+
+        regfree(&regex);
+    } else if (reti == REG_NOMATCH) {
+        printf("No match found\n");
+    } else {
+        char error_message[100];
+        regerror(reti, &regex, error_message, sizeof(error_message));
+        fprintf(stderr, "Regex match failed: %s\n", error_message);
+    }
+
+    return;
+}
+
 char *read_http_reply(struct http_reply *reply) {
+
+    struct http_reply *reply_copy = (struct http_reply *)malloc(sizeof(struct http_reply));
+    reply_copy->reply_buffer = (char *)calloc(1, reply->reply_buffer_length*sizeof(char));
+    strcpy(reply_copy->reply_buffer, reply->reply_buffer);
+    reply_copy->reply_buffer_length = reply->reply_buffer_length;
 
     // Let's first isolate the first line of the reply
     char *status_line = next_line(reply->reply_buffer, reply->reply_buffer_length);
@@ -257,14 +302,36 @@ char *read_http_reply(struct http_reply *reply) {
     int status;
     double http_version;
     int rv = sscanf(reply->reply_buffer, "HTTP/%lf %d", &http_version, &status);
+
+    //printf("%s\n", reply_copy->reply_buffer);
+
     if (rv != 2) {
         fprintf(stderr, "Could not parse http response first line (rv=%d, %s)\n", rv, reply->reply_buffer);
         return NULL;
     }
 
     if(status == 301 || status == 302){
-        fprintf(stderr, "Redirect\n");
-        return NULL;
+        //fprintf(stderr, "Redirect\n");
+        //printf("%s\n", reply_copy->reply_buffer);
+
+        struct http_reply *new_reply = malloc(sizeof(struct http_reply));
+        char *new_url = (char *)calloc(1, sizeof(char));
+        find_new_url(reply_copy->reply_buffer, new_url);
+        url_info *new_urlinfo = (url_info *)calloc(1, sizeof(url_info));
+
+        if(parse_url(new_url, new_urlinfo) != 0){
+            fprintf(stderr, "Problem with redirect URL\n");
+            return NULL;
+        }
+
+        //print_url_info(new_urlinfo);
+
+        if(download_page(new_urlinfo, new_reply)){
+            fprintf(stderr, "Problem downloading redirect page\n");
+            return NULL;
+        }
+
+        return read_http_reply(new_reply);
     }
 
     if (status != 200) {
