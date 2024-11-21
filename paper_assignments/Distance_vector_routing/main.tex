@@ -1,0 +1,141 @@
+\documentclass[]{article}
+\pagenumbering{gobble}
+\usepackage[a4paper]{geometry}
+
+\usepackage{pgfplots}
+\usepackage{tcolorbox}
+\usepackage{circuitikz}
+\usepackage{amsmath}
+\usepackage{pgfplotstable}
+\pgfplotsset{compat=1.18}
+
+\usepackage{tikz}
+\usetikzlibrary{automata, positioning, arrows, calc}
+
+\tikzset{
+	->,
+	>=stealth,
+	node distance=3cm,
+	every state/.style={thick, fill=gray!10},
+	initial text=$ $,
+}
+
+\usepackage{tcolorbox}
+
+%opening
+\title{Paper assignement 5: Distance Vector Routing}
+\author{Gabriel PEREIRA DE CARVALHO}
+\date{Last modification: \today}
+
+\begin{document}
+	
+	\maketitle
+	
+	\section*{Distance Vector Version 0}
+	
+	\begin{center}
+		\begin{tabular}{ |c|c|c|c|c|c| } 
+			\hline
+			\textbf{$D_A$} & \textbf{Dest: B} & \textbf{Dest: C} &  \textbf{Dest: D} & \textbf{Dest: E} & \textbf{Dest: F} \\
+			\hline
+			\textbf{Via: B} & $\infty$ & $\infty$ & $\infty$ & $\infty$ & $\infty$ \\
+			\hline 
+			\textbf{Via: C} & $\infty$ & $\infty$ & $\infty$ & $\infty$ & $\infty$ \\
+			\hline
+			\textbf{Via: D} & $\infty$ & $\infty$ & $\infty$ & $\infty$ & $\infty$ \\
+			\hline
+			\textbf{Via: E} & $\infty$ & $\infty$ & $\infty$ & $\infty$ & $\infty$ \\
+			\hline
+			\textbf{Via: F} & $\infty$ & $\infty$ & $\infty$ & $\infty$ & $\infty$ \\
+			\hline
+		\end{tabular}
+	\end{center}
+	
+	\section*{Distance Vector Version 1}
+	
+	\begin{itemize}
+		\item The router boots and discovers its directly adjacent links.
+	\end{itemize}
+		
+	\begin{center}
+		\begin{tabular}{ |c|c|c|c|c|c| } 
+			\hline
+			\textbf{$D_A$} & \textbf{Dest: B} & \textbf{Dest: C} &  \textbf{Dest: D} & \textbf{Dest: E} & \textbf{Dest: F} \\
+			\hline
+			\textbf{Via: B} & $21$ & $\infty$ & $\infty$ & $\infty$ & $\infty$ \\
+			\hline 
+			\textbf{Via: C} & $\infty$ & $7$ & $\infty$ & $\infty$ & $\infty$ \\
+			\hline
+			\textbf{Via: D} & $\infty$ & $\infty$ & $\infty$ & $\infty$ & $\infty$ \\
+			\hline
+			\textbf{Via: E} & $\infty$ & $\infty$ & $\infty$ & $6$ & $\infty$ \\
+			\hline
+			\textbf{Via: F} & $\infty$ & $\infty$ & $\infty$ & $\infty$ & $5$ \\
+			\hline
+		\end{tabular}
+	\end{center}
+	
+	\section*{Distance Vector Version 2}
+	
+	\begin{itemize}
+		\item The router A receives the following DV messages:
+		\begin{itemize}
+			\item From B, containing \{(C,16), (D,8), (F,4)\}
+			\item From C, containing \{(B,16), (D,3), (E,12)\}
+			\item From E, containing \{(C,12), (D,9), (F,2)\}
+			\item From F, containing \{(B,4), (D,14), (E,2)\}
+		\end{itemize}
+		\item We observe that A does not receive notifications for updates in D's routing table because routers A and D are not linked directly.
+	\end{itemize}
+	
+	\begin{center}
+		\begin{tabular}{ |c|c|c|c|c|c| } 
+			\hline
+			\textbf{$D_A$} & \textbf{Dest: B} & \textbf{Dest: C} &  \textbf{Dest: D} & \textbf{Dest: E} & \textbf{Dest: F} \\
+			\hline
+			\textbf{Via: B} & $21$ & $37$ & $29$ & $\infty$ & $25$ \\
+			\hline 
+			\textbf{Via: C} & $23$ & $7$ & $10$ & $19$ & $\infty$ \\
+			\hline
+			\textbf{Via: D} & $\infty$ & $\infty$ & $\infty$ & $\infty$ & $\infty$ \\
+			\hline
+			\textbf{Via: E} & $\infty$ & $18$ & $15$ & $6$ & $8$ \\
+			\hline
+			\textbf{Via: F} & $9$ & $\infty$ & $19$ & $7$ & $5$ \\
+			\hline
+		\end{tabular}
+	\end{center}
+	
+	\section*{Distance Vector Version 3}
+	
+	\begin{itemize}
+		\item The router A receives the following DV messages:
+		\begin{itemize}
+			\item From B, containing \{(C,11), (E,6)\}
+			\item From C, containing \{(B,11), (F,12)\}
+			\item From E, containing \{(B,6)\}
+			\item From F, containing \{(C,12)\}
+		\end{itemize}
+	\end{itemize}
+	
+	\begin{center}
+		\begin{tabular}{ |c|c|c|c|c|c| } 
+			\hline
+			\textbf{$D_A$} & \textbf{Dest: B} & \textbf{Dest: C} &  \textbf{Dest: D} & \textbf{Dest: E} & \textbf{Dest: F} \\
+			\hline
+			\textbf{Via: B} & $21$ & $32$ & $29$ & $27$ & $25$ \\
+			\hline 
+			\textbf{Via: C} & $18$ & $7$ & $10$ & $19$ & $19$ \\
+			\hline
+			\textbf{Via: D} & $\infty$ & $\infty$ & $\infty$ & $\infty$ & $\infty$ \\
+			\hline
+			\textbf{Via: E} & $12$ & $18$ & $15$ & $6$ & $8$ \\
+			\hline
+			\textbf{Via: F} & $9$ & $17$ & $16$ & $7$ & $5$ \\
+			\hline
+		\end{tabular}
+	\end{center}
+	
+	After this iteration, the distance vector has converged and thus will not be modified in future iterations.
+
+\end{document}
