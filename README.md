@@ -12,6 +12,8 @@ Assignments from the course Fundamentals of Modern Computer Networking at Ecole 
 
 - **Tutorial 3a**: Multi-threading in C
 
+- **Lab 4a**: Distance vector routing
+
 ## Paper assignments
 
 - **Paper assignment 1**: state machine for Tutorial 2a application (wgetX)
